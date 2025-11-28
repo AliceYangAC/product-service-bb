@@ -16,12 +16,9 @@ client = MongoClient(mongo_uri)
 db = client.productdb
 collection = db.products
 
-# ---------------------------------------------------------
-# DATA SEEDING
-# ---------------------------------------------------------
+# Seed initial data if collection is empty
 def seed_data():
     if collection.count_documents({}) == 0:
-        print("Seeding database with default products...")
         # Generated products with AI
         initial_products = [
             {
@@ -101,35 +98,26 @@ def seed_data():
 # Run seeding immediately on startup
 seed_data()
 
-
-# ---------------------------------------------------------
-# ROUTES 
-# ---------------------------------------------------------
-
+# Flask routes
 # Health check endpoint
 @app.route('/health', methods=['GET', 'HEAD'])
 def health():
     version = os.getenv("APP_VERSION", "0.1.0")
-    # Matches Rust: json!({"status": "ok", "version": version})
     return jsonify({"status": "ok", "version": version})
 
 # Gets all products
 @app.route('/', methods=['GET'])
 def get_products():
-    # Rust: data.products.lock().unwrap().to_vec()
-    # Python: Find all, exclude internal _id
     products = list(collection.find({}, {'_id': 0}))
     return jsonify(products)
 
 # Gets a single product by ID
 @app.route('/<int:product_id>', methods=['GET'])
 def get_product(product_id):
-    # Rust: products.iter().position(|p| p.id == path.product_id)
     product = collection.find_one({"id": product_id}, {'_id': 0})
     if product:
         return jsonify(product)
     else:
-        # Rust: HttpResponse::NotFound().body("Product not found")
         return "Product not found", 404
 
 # Adds a new product
@@ -137,16 +125,12 @@ def get_product(product_id):
 def add_product():
     if not request.json:
         return "Invalid input", 400
-    
-    # Rust: let new_id = products.len() as i32 + 1;
     # We query the DB for the highest ID to ensure safety
     last_product = collection.find_one(sort=[("id", -1)])
     new_id = (last_product['id'] + 1) if last_product else 1
 
     new_product = request.json
     new_product['id'] = new_id
-
-    # NOTE: validate_product (WASM logic) is omitted as per request to focus on storage adaptation
     
     collection.insert_one(new_product)
     
@@ -163,7 +147,6 @@ def update_product():
     update_data = request.json
     target_id = update_data['id']
     
-    # Matches ID, then products[index] = validated_product
     result = collection.update_one({"id": target_id}, {"$set": update_data})
     
     if result.matched_count == 0:
@@ -185,10 +168,6 @@ def delete_product(product_id):
 
     return "", 200
 
-
-# ---------------------------------------------------------
-# APPLICATION START
-# ---------------------------------------------------------
 if __name__ == '__main__':
     # Maps to: settings.port: 3002
     port = int(os.getenv('PORT', 3002))
