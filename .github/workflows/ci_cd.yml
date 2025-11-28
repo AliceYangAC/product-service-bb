@@ -82,7 +82,7 @@ jobs:
           DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME }}
         run: |
           docker pull $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py
-          docker tag $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py
+          docker tag $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py
           docker push $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py
 
   # Not deploying for now; not testing on AKS cluster yet
