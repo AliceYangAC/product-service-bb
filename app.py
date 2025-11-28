@@ -172,11 +172,22 @@ def delete_product(product_id):
 # Serves product images from Azure Blob Storage
 @app.route('/images/<filename>')
 def get_image(filename):
-    blob_service = BlobServiceClient.from_connection_string(os.getenv("BLOB_CONN_STR"))
-    blob_client = blob_service.get_blob_client(container="product-images", blob=filename)
+    try:
+        blob_service = BlobServiceClient.from_connection_string(os.getenv("BLOB_CONN_STR"))
+        blob_client = blob_service.get_blob_client(container="product-images", blob=filename)
 
-    stream = blob_client.download_blob()
-    return Response(stream.chunks(), mimetype="image/jpeg")
+        # Download the data into memory
+        image_data = blob_client.download_blob().readall()
+
+        # Print DEBUG info to the logs
+        print(f"DEBUG: Successfully fetched '{filename}' - Size: {len(image_data)} bytes", flush=True)
+
+        # 3. Return the data
+        return Response(image_data, mimetype="image/jpeg")
+
+    except Exception as e:
+        print(f"ERROR fetching '{filename}': {str(e)}", flush=True)
+        return "Image not found", 404
 
 if __name__ == '__main__':
     # Maps to: settings.port: 3002
