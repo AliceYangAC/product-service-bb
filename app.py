@@ -21,76 +21,88 @@ collection = db.products
 def seed_data():
     if collection.count_documents({}) == 0:
         # Generated products with AI with images hosted in Azure Blob Storage
+        # store-front hits product-service's endpoint @ port 3002 to get the products
+        # located at the provided image path in Blob Storage
         initial_products = [
             {
                 "id": 1,
                 "name": "UltraSlim X1 Laptop",
                 "price": 1299.99,
                 "description": "Experience peak performance with the UltraSlim X1. Featuring a 4K InfinityEdge display, i9 processor, and all-day battery life for professionals on the go.",
-                "image": "/images/laptop_x1.jpg"
+                "image": "/images/laptop_x1.jpg",
+                "category": "Computers & Tablets"
             },
             {
                 "id": 2,
                 "name": "NoiseGuard Pro Headphones",
                 "price": 349.99,
                 "description": "Immerse yourself in music with industry-leading noise cancellation. The NoiseGuard Pro offers 30 hours of listening time and plush ear cushions for comfort.",
-                "image": "/images/headphones_pro.jpg"
+                "image": "/images/headphones_pro.jpg",
+                "category": "Audio"
             },
             {
                 "id": 3,
                 "name": "Visionary 4K Monitor",
                 "price": 499.99,
                 "description": "See every detail with the Visionary 27-inch 4K monitor. Perfect for designers and gamers, featuring HDR support and a 144Hz refresh rate.",
-                "image": "/images/monitor_4k.jpg"
+                "image": "/images/monitor_4k.jpg",
+                "category": "Computer Accessories"
             },
             {
                 "id": 4,
                 "name": "GamerZ Console 5",
                 "price": 499.00,
                 "description": "Next-gen gaming is here. Play games in stunning 4K at 120fps with ray tracing technology and ultra-fast load times.",
-                "image": "/images/console_5.jpg"
+                "image": "/images/console_5.jpg",
+                "category": "Video Games"
             },
             {
                 "id": 5,
                 "name": "SmartWatch Series 7",
                 "price": 399.99,
                 "description": "Track your fitness, monitor your health, and stay connected without your phone. Features an always-on Retina display and crack-resistant crystal.",
-                "image": "/images/smartwatch_7.jpg"
+                "image": "/images/smartwatch_7.jpg",
+                "category": "Wearable Technology"
             },
             {
                 "id": 6,
                 "name": "BlueBeat Portable Speaker",
                 "price": 129.99,
                 "description": "Take the party anywhere with the BlueBeat. Waterproof, dustproof, and drop-proof, delivering powerful 360-degree sound.",
-                "image": "/images/speaker_blue.jpg"
+                "image": "/images/speaker_blue.jpg",
+                "category": "Audio"
             },
             {
                 "id": 7,
                 "name": "ProTab Air Tablet",
                 "price": 599.99,
                 "description": "Power and portability combined. The ProTab Air features the M1 chip, a stunning Liquid Retina display, and compatibility with the smart pencil.",
-                "image": "/images/tablet_air.jpg"
+                "image": "/images/tablet_air.jpg",
+                "category": "Computers & Tablets"
             },
             {
                 "id": 8,
                 "name": "MechKey RGB Keyboard",
                 "price": 149.99,
                 "description": "Dominate the competition with the MechKey RGB. Features responsive mechanical switches, customizable macro keys, and vibrant backlighting.",
-                "image": "/images/keyboard_rgb.jpg"
+                "image": "/images/keyboard_rgb.jpg",
+                "category": "Computer Accessories"
             },
             {
                 "id": 9,
                 "name": "CineView 65\" OLED TV",
                 "price": 1999.99,
                 "description": "Experience true blacks and rich colors with the CineView OLED. Smart TV capabilities built-in with voice control and AI picture enhancement.",
-                "image": "/images/tv_oled.jpg"
+                "image": "/images/tv_oled.jpg",
+                "category": "TV & Home Theater"
             },
             {
                 "id": 10,
                 "name": "Bolt External SSD 1TB",
                 "price": 159.99,
                 "description": "Transfer files in seconds with the Bolt SSD. Rugged design, USB-C connectivity, and read speeds up to 1050MB/s.",
-                "image": "/images/ssd_bolt.jpg"
+                "image": "/images/ssd_bolt.jpg",
+                "category": "Computer Accessories"
             }
         ]
         collection.insert_many(initial_products)
@@ -106,13 +118,14 @@ def health():
     version = os.getenv("APP_VERSION", "0.1.0")
     return jsonify({"status": "ok", "version": version})
 
-# Gets all products
+# store-front: gets all products
 @app.route('/', methods=['GET'])
 def get_products():
     products = list(collection.find({}, {'_id': 0}))
     return jsonify(products)
 
-# Gets a single product by ID
+# store-front: gets a single product by ID
+# Note: add the call later to query MongoDB for past orders for the recommendations feature
 @app.route('/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = collection.find_one({"id": product_id}, {'_id': 0})
@@ -121,7 +134,7 @@ def get_product(product_id):
     else:
         return "Product not found", 404
 
-# Adds a new product
+# store-admin: adds a new product
 @app.route('/', methods=['POST'])
 def add_product():
     if not request.json:
@@ -139,7 +152,7 @@ def add_product():
     del new_product['_id']
     return jsonify(new_product)
 
-# Updates an existing product
+# store-admin: updates an existing product
 @app.route('/', methods=['PUT'])
 def update_product():
     if not request.json or 'id' not in request.json:
@@ -157,7 +170,7 @@ def update_product():
     updated_product = collection.find_one({"id": target_id}, {'_id': 0})
     return jsonify(updated_product)
 
-# Deletes a product by ID
+# store-admin deletes a product by ID
 @app.route('/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
     # Returns table without the deleted product
@@ -169,24 +182,18 @@ def delete_product(product_id):
 
     return "", 200
 
-# Serves product images from Azure Blob Storage
+# store-front & store-admin: serves product images from Azure Blob Storage to store-front
 @app.route('/images/<filename>')
 def get_image(filename):
     try:
         blob_service = BlobServiceClient.from_connection_string(os.getenv("BLOB_CONN_STR"))
         blob_client = blob_service.get_blob_client(container="product-images", blob=filename)
-
-        # Download the data into memory
         image_data = blob_client.download_blob().readall()
 
-        # Print DEBUG info to the logs
-        print(f"DEBUG: Successfully fetched '{filename}' - Size: {len(image_data)} bytes", flush=True)
-
-        # 3. Return the data
+        # Return the data
         return Response(image_data, mimetype="image/jpeg")
 
     except Exception as e:
-        print(f"ERROR fetching '{filename}': {str(e)}", flush=True)
         return "Image not found", 404
 
 if __name__ == '__main__':
