@@ -82,56 +82,55 @@ jobs:
           DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME }}
         run: |
           docker pull $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:test
-          docker tag $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:test $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py
-          docker push $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:py
+          docker tag $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:test $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
+          docker push $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
 
-  # Not deploying for now; not testing on AKS cluster yet
-  # Step 3: Deploy Job
+  Step 3: Deploy Job
   # Deploy the container image to a container orchestrator, such as K8s.
-  # Deploy:
-  #   runs-on: ubuntu-latest
+  Deploy:
+    runs-on: ubuntu-latest
 
-  #   # Ensure the Deploy job only runs if the Release is successful
-  #   needs: Release
+    # Ensure the Deploy job only runs if the Release is successful
+    needs: Release
 
-  #   steps:
-  #   - name: Checkout Code
-  #     uses: actions/checkout@v3
-  #   # Seed images in Azure Blob
-  #   - name: Azure Login
-  #     uses: azure/login@v1
-  #     with:
-  #       creds: ${{ secrets.AZURE_CREDENTIALS }}
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    # Seed images in Azure Blob
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-  #   - name: Seed Images to Blob Storage
-  #     uses: azure/CLI@v1
-  #     with:
-  #       inlineScript: |
-  #         echo "Uploading images..."
-  #         az storage blob upload-batch \
-  #           --destination product-images \
-  #           --source ./images \
-  #           --connection-string "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-  #           --overwrite
-  #         echo "Seeding complete."
-  #     - name: Deploy to AKS
-  #       env:
-  #         KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-  #         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  #         DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME }}
-  #         DEPLOYMENT_NAME: ${{ vars.DEPLOYMENT_NAME }}
-  #         CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
-  #       run: |
-  #         echo "$KUBE_CONFIG_DATA" | base64 -d > kubeconfig
-  #         export KUBECONFIG=kubeconfig
-  #         kubectl set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
-  #         kubectl rollout restart deployment/$DEPLOYMENT_NAME
-  #     - name: Verify Deployment
-  #       env:
-  #         KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-  #         DEPLOYMENT_NAME: ${{ vars.DEPLOYMENT_NAME }}
-  #       run: |
-  #         echo "$KUBE_CONFIG_DATA" | base64 -d > kubeconfig
-  #         export KUBECONFIG=kubeconfig
-  #         kubectl rollout status deployment/$DEPLOYMENT_NAME
-  #         kubectl get pods -o wide
+    - name: Seed Images to Blob Storage
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "Uploading images..."
+          az storage blob upload-batch \
+            --destination product-images \
+            --source ./images \
+            --connection-string "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+            --overwrite
+          echo "Seeding complete."
+      - name: Deploy to AKS
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME }}
+          DEPLOYMENT_NAME: ${{ vars.DEPLOYMENT_NAME }}
+          CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+        run: |
+          echo "$KUBE_CONFIG_DATA" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+          kubectl set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
+          kubectl rollout restart deployment/$DEPLOYMENT_NAME
+      - name: Verify Deployment
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          DEPLOYMENT_NAME: ${{ vars.DEPLOYMENT_NAME }}
+        run: |
+          echo "$KUBE_CONFIG_DATA" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+          kubectl rollout status deployment/$DEPLOYMENT_NAME
+          kubectl get pods -o wide
