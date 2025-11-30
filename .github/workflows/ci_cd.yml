@@ -85,7 +85,7 @@ jobs:
           docker tag $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:test $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
           docker push $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest
 
-  Step 3: Deploy Job
+  # Step 3: Deploy Job
   # Deploy the container image to a container orchestrator, such as K8s.
   Deploy:
     runs-on: ubuntu-latest
@@ -94,25 +94,6 @@ jobs:
     needs: Release
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-    # Seed images in Azure Blob
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-    - name: Seed Images to Blob Storage
-      uses: azure/CLI@v1
-      with:
-        inlineScript: |
-          echo "Uploading images..."
-          az storage blob upload-batch \
-            --destination product-images \
-            --source ./images \
-            --connection-string "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-            --overwrite
-          echo "Seeding complete."
       - name: Deploy to AKS
         env:
           KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
