@@ -192,6 +192,30 @@ def delete_product(product_id):
 
     return "", 200
 
+@app.route('/upload', methods=['POST'])
+def upload_image():
+    # 1. Get the file from the request
+    file = request.files.get('file')
+    if not file:
+        return "No file uploaded", 400
+
+    try:
+        blob_service = BlobServiceClient.from_connection_string(os.getenv("BLOB_CONN_STR"))
+        
+        try:
+            blob_service.create_container("product-images")
+        except Exception:
+            pass 
+
+        blob_client = blob_service.get_blob_client(container="product-images", blob=file.filename)
+        blob_client.upload_blob(file, overwrite=True)
+
+        return jsonify({"image": f"/images/{file.filename}"})
+
+    except Exception as e:
+        print(f"Upload Error: {e}")
+        return "Upload failed", 500
+    
 # store-front & store-admin: serves product images from Azure Blob Storage to store-front
 @app.route('/images/<filename>')
 def get_image(filename):
