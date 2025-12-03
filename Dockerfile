@@ -13,7 +13,7 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Start fresh with only the minimal Python runtime.
+# Use a minimal Python runtime for the final image
 FROM python:3.10-alpine AS runtime
 
 # Set working directory for the final application
